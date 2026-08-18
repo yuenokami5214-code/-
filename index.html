@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+<!-- アプリ化用の設定 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="カウンター">
+<!-- ホーム画面のアイコン画像（お好みの画像URLに変更可能） -->
+<link rel="apple-touch-icon" href="https://via.placeholder.com/180">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>リスト型イラストカウンター</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: #000;
+      color: #fff;
+      margin: 0;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .header {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 0 4px;
+    }
+    h1 { font-size: 18px; margin: 0; color: #fff; }
+    
+    .add-btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .counter-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    /* 各カウンターの横長バー */
+    .counter-item {
+      display: flex;
+      align-items: center;
+      border-radius: 12px;
+      height: 90px;
+      overflow: hidden;
+      position: relative;
+      color: #000;
+    }
+
+    /* 左側：画像エリア */
+    .image-section {
+      width: 90px;
+      height: 100%;
+      border-right: 2px solid rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      background-color: rgba(0, 0, 0, 0.05);
+      flex-shrink: 0;
+    }
+    .image-section img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .image-section .no-img {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.5);
+      text-align: center;
+      padding: 4px;
+    }
+    .image-section input[type="file"] {
+      display: none;
+    }
+
+    /* 中央：名前・リセット・カウント数値エリア */
+    .center-section {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 8px 12px;
+      position: relative;
+    }
+
+    /* 上段：名前 ＆ リセットボタン */
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .name-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.3);
+      font-size: 15px;
+      font-weight: bold;
+      color: #000;
+      outline: none;
+      width: 70%;
+    }
+
+    .action-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .reset-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #000;
+      padding: 0;
+      line-height: 1;
+      opacity: 0.8;
+    }
+    .reset-btn:active { transform: rotate(-45deg); }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: rgba(0, 0, 0, 0.5);
+      padding: 0;
+      line-height: 1;
+    }
+
+    /* 下段：カウント数字 */
+    .count-display {
+      font-size: 36px;
+      font-weight: bold;
+      text-align: center;
+      line-height: 1;
+      margin-bottom: 4px;
+      color: #000;
+    }
+
+    /* 右側：プラスマイナスボタン */
+    .btn-section {
+      width: 75px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid rgba(0, 0, 0, 0.2);
+      flex-shrink: 0;
+    }
+
+    .step-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      font-weight: bold;
+      color: #000;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-btn:active {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+    .btn-minus {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
+    /* ポップアニメーション */
+    .bounce { animation: pop 0.15s ease-in-out; }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>カウンター</h1>
+    <button class="add-btn" onclick="addCounter()">＋ 追加</button>
+  </div>
+
+  <div class="counter-list" id="list"></div>
+
+  <script>
+    // 背景色のカラーバリエーション（参考画像風）
+    const colors = [
+      '#e91e63', // ピンク
+      '#fbc02d', // イエロー
+      '#7cb342', // グリーン
+      '#29b6f6', // ブルー
+      '#ab47bc', // パープル
+      '#ffa726'  // オレンジ
+    ];
+
+    let counters = JSON.parse(localStorage.getItem('my_list_counters')) || [];
+
+    if (counters.length === 0) {
+      counters.push({ id: Date.now(), name: 'ここな', count: 0, image: '', color: colors[0] });
+      counters.push({ id: Date.now() + 1, name: 'カトリナ', count: 0, image: '', color: colors[1] });
+      saveData();
+    } else {
+      render();
+    }
+
+    function saveData() {
+      localStorage.setItem('my_list_counters', JSON.stringify(counters));
+    }
+
+    function addCounter() {
+      const nextColor = colors[counters.length % colors.length];
+      counters.push({
+        id: Date.now(),
+        name: `項目 ${counters.length + 1}`,
+        count: 0,
+        image: '',
+        color: nextColor
+      });
+      saveData();
+      render();
+    }
+
+    function deleteCounter(id) {
+      if (counters.length === 1) return;
+      counters = counters.filter(c => c.id !== id);
+      saveData();
+      render();
+    }
+
+    function changeCount(id, delta) {
+      const counter = counters.find(c => c.id === id);
+      if (counter) {
+        counter.count += delta;
+        saveData();
+        
+        const countEl = document.getElementById(`count-${id}`);
+        if (countEl) {
+          countEl.textContent = counter.count;
+          countEl.classList.remove('bounce');
+          void countEl.offsetWidth;
+          countEl.classList.add('bounce');
+        }
+      }
+    }
+
+    function resetCount(id) {
+      const counter = counters.find(c => c.id === id);
+      if (counter) {
+        counter.count = 0;
+        saveData();
+        document.getElementById(`count-${id}`).textContent = 0;
+      }
+    }
+
+    function updateName(id, newName) {
+      const counter = counters.find(c => c.id === id);
+      if (counter) {
+        counter.name = newName;
+        saveData();
+      }
+    }
+
+    function triggerImageUpload(id) {
+      document.getElementById(`file-input-${id}`).click();
+    }
+
+    function handleImage(id, input) {
+      const file = input.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const counter = counters.find(c => c.id === id);
+          if (counter) {
+            counter.image = e.target.result;
+            saveData();
+            render();
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function render() {
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+
+      counters.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'counter-item';
+        item.style.backgroundColor = c.color;
+
+        item.innerHTML = `
+          <!-- 左：画像エリア -->
+          <div class="image-section" onclick="triggerImageUpload(${c.id})">
+            ${c.image 
+              ? `<img src="${c.image}" alt="イラスト">` 
+              : `<div class="no-img">タップして<br>画像選択</div>`}
+            <input type="file" id="file-input-${c.id}" accept="image/*" onchange="handleImage(${c.id}, this)">
+          </div>
+
+          <!-- 中央：名前・リセット・数値 -->
+          <div class="center-section">
+            <div class="top-row">
+              <input type="text" class="name-input" value="${c.name}" onchange="updateName(${c.id}, this.value)" placeholder="名前を入力">
+              <div class="action-btns">
+                <button class="reset-btn" onclick="resetCount(${c.id})" title="リセット">↺</button>
+                <button class="delete-btn" onclick="deleteCounter(${c.id})" title="削除">×</button>
+              </div>
+            </div>
+            <div class="count-display" id="count-${c.id}">${c.count}</div>
+          </div>
+
+          <!-- 右：プラスマイナスボタン -->
+          <div class="btn-section">
+            <button class="step-btn btn-minus" onclick="changeCount(${c.id}, -1)">ー</button>
+            <button class="step-btn" onclick="changeCount(${c.id}, 1)">＋</button>
